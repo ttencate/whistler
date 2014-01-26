@@ -17,22 +17,13 @@ $(function() {
 
   var spectrumCanvas = $("#spectrum")[0];
   var spectrumContext = spectrumCanvas.getContext("2d");
+  var spectrogramCanvas = $("#spectrogram")[0];
+  var spectrogramContext = spectrogramCanvas.getContext("2d");
   var frequencyDiv = $("#frequency");
   var noteDiv = $("#note");
-  function renderSpectrum(spectrum, sampleRate) {
-    var width = spectrumCanvas.width;
-    var height = spectrumCanvas.height;
 
-    spectrumContext.clearRect(0, 0, width, height);
-
+  function extractFrequency(spectrum, sampleRate) {
     var n = spectrum.length;
-
-    var w = 6;
-    for (var i = 0; i < n; ++i) {
-      var h = 128 + spectrum[i];
-      spectrumContext.fillRect(i * w, height - h, w, h);
-    }
-
     var peakBin = 0;
     var peak = -1e99;
     for (var i = 0; i < n; ++i) {
@@ -55,17 +46,78 @@ $(function() {
     }
     var peak = peakBin + adjustment;
     var frequency = peak * sampleRate / n;
+    return frequency;
+  }
+
+  function renderSpectrum(spectrum, sampleRate, frequency) {
+    var width = spectrumCanvas.width;
+    var height = spectrumCanvas.height;
+
+    spectrumContext.clearRect(0, 0, width, height);
+
+    var n = spectrum.length;
+
+    var w = 6;
+    for (var i = 0; i < n; ++i) {
+      var h = 128 + spectrum[i];
+      spectrumContext.fillRect(i * w, height - h, w, h);
+    }
 
     var note = frequencyToNote(frequency);
     frequencyDiv.html(frequency + " Hz");
     noteDiv.html(noteToString(note));
 
+    var peak = frequency / sampleRate * n;
     spectrumContext.strokeStyle = "#f00";
     spectrumContext.beginPath();
     spectrumContext.moveTo((peak + 0.5) * w, 0);
     spectrumContext.lineTo((peak + 0.5) * w, height);
     spectrumContext.closePath();
     spectrumContext.stroke();
+  }
+
+  var spectrogramN;
+
+  function clearSpectrogram() {
+    var width = spectrogramCanvas.width;
+    var height = spectrogramCanvas.height;
+    spectrogramContext.clearRect(0, 0, width, height);
+    spectrogramN = 0;
+  }
+
+  function intensityToColor(x) {
+    var c = Math.round(256 + 2*x);
+    if (c < 0) c = 0;
+    if (c > 255) c = 255;
+    return "rgb(" + c + "," + c + "," + c + ")";
+  }
+
+  function renderSpectrogram(spectrum, sampleRate, frequency) {
+    var width = spectrogramCanvas.width;
+    var height = spectrogramCanvas.height;
+    var n = spectrum.length;
+    var w = 4;
+    var h = 2;
+    for (var i = 0; i < n; i++) {
+      spectrogramContext.fillStyle = intensityToColor(spectrum[i]);
+      spectrogramContext.fillRect(spectrogramN * w, height - (i + 1) * h, w, h);
+    }
+
+    var peak = frequency / sampleRate * n;
+    spectrogramContext.strokeStyle = "#f00";
+    spectrogramContext.beginPath();
+    spectrogramContext.moveTo(spectrogramN * w, height - (peak + 0.5) * h)
+    spectrogramContext.lineTo((spectrogramN + 1) * w, height - (peak + 0.5) * h)
+    spectrogramContext.stroke();
+
+    spectrogramN++;
+    if (spectrogramN * w > width) spectrogramN = 0;
+
+    spectrogramContext.strokeStyle = "#008";
+    spectrogramContext.beginPath();
+    spectrogramContext.moveTo(spectrogramN * w + 0.5, 0);
+    spectrogramContext.lineTo(spectrogramN * w + 0.5, height);
+    spectrogramContext.stroke();
   }
 
   var context;
@@ -100,7 +152,9 @@ $(function() {
   var scriptProcessor = context.createScriptProcessor(analyser.fftSize);
   scriptProcessor.onaudioprocess = function(e) {
     analyser.getFloatFrequencyData(spectrum);
-    renderSpectrum(spectrum, context.sampleRate);
+    var frequency = extractFrequency(spectrum, context.sampleRate);
+    renderSpectrum(spectrum, context.sampleRate, frequency);
+    renderSpectrogram(spectrum, context.sampleRate, frequency);
   };
   analyser.connect(scriptProcessor);
 
@@ -118,6 +172,8 @@ $(function() {
     navigator.getUserMedia(
       {audio: true},
       function(stream) {
+        clearSpectrogram();
+
         microphoneStream = stream;
         microphone = context.createMediaStreamSource(microphoneStream);
         microphone.connect(toMono);
