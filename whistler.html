@@ -8,11 +8,25 @@
   </head>
   <body>
     <h1>Whistler</h1>
-    <button id="record">Record</button>
-    <button id="stop" style="display:none;">Stop</button>
-    <canvas id="spectrum" width="960" height="240"></canvas>
-    <canvas id="spectrogram" width="960" height="240"></canvas>
-    <p id="frequency"></p>
-    <p id="note"></p>
+    <p>Uses the <a href="https://dvcs.w3.org/hg/audio/raw-file/tip/webaudio/specification.html">Web Audio API</a> to record audio and to compute a spectrogram. Extracts the dominant frequency by finding the maximum FFT bin and doing some local <a href="http://www.ingelec.uns.edu.ar/pds2803/Materiales/Articulos/AnalisisFrecuencial/04205098.pdf">refinement</a>. Then resolves that into a <a href="https://en.wikipedia.org/wiki/Piano_key_frequencies">piano note</a>.</p>
+    <p>Try whistling to it. The idea is to eventually make this generate a MIDI or MOD file for use in e.g. <a href="http://openmpt.org/">OpenMPT</a>.</p>
+    <p>Works in Chrome 31, no other browsers tested.</p>
+    <p>
+      <button id="record">Record</button>
+      <button id="stop" style="display:none;">Stop</button>
+    </p>
+    <p>
+      <canvas id="spectrum" width="960" height="240"></canvas>
+    </p>
+    <p>
+      <canvas id="spectrogram" width="960" height="240"></canvas>
+    </p>
+    <p>
+      <span id="frequency"></span><br>
+      <span id="note"></span>
+    </p>
+    <footer>
+      <p>Source <a href="http://github.com/ttencate/whistler">on GitHub</a>.</p>
+    </footer>
   </body>
 </html>
